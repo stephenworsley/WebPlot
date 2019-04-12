@@ -1,0 +1,45 @@
+{
+  "title": "test plot",
+  "axes": [
+    "axis 1",
+    "axis 2",
+    "axis 3"
+  ],
+  "animated": true,
+  "groups": {
+    "groupA": {
+      "name": "Alice",
+      "data": [1,2,3],
+      "color": "blue",
+      "date": "01/02/2003"
+    },
+    "groupB": {
+      "name": "Bob",
+      "data": [4,3,1],
+      "date": "04/05/2020"
+    },
+    "groupC": {
+      "data": [4,3,1],
+      "color": "default",
+      "date": "05/06/2010"
+    },
+    "groupA2": {
+      "name": "Alice",
+      "data": [2,3,4],
+      "date": "05/06/2010"
+    },
+    "groupB2": {
+      "name": "Bob",
+      "data": [3,2,1],
+      "date": "01/02/2003"
+    },
+    "groupA3": {
+      "name": "Alice",
+      "data": [2,3,4],
+      "color": "default",
+      "date": "04/05/2020"
+    }
+
+  }
+}
+
