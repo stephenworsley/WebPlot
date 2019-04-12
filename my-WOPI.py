@@ -8,6 +8,13 @@ import numpy as np
 import datetime
 
 def cleanConfig(config):
+    """
+    Cleans the configuration data and raises exceptions where appropriate.
+
+    Args:
+
+    * config (dict)
+    """
     if 'title' not in config:
         config['title'] = ''
     if 'axes' not in config:
@@ -31,15 +38,14 @@ def cleanConfig(config):
     date_dict = dict()
     frames_missing = False
     has_frames = False
-    name_list = []
+    name_set = set()
     data_set = set()
     for group, content in config['groups'].items():
         if type(content) is not dict:
             raise Exception("{0} should be a dict. {0} had type: {1}".format(type(content),group))
         if 'name' not in content:
             content['name'] = group
-        if content['name'] not in name_list:
-            name_list.append(content['name'])
+        name_set.add(content['name'])
         if 'data' not in content:
             raise Exception("'data' does not exist in group '{}'.".format(group))
         if type(content['data']) is not list:
@@ -60,8 +66,6 @@ def cleanConfig(config):
             if 'frame' in content:
                 if type(content['frame']) is not int:
                     raise Exception("'frame' in group {} does not have type int".format(group))
-                # if content['frame'] < 0
-                #     raise Exception ("'frame' in group {} is negative".format(group))
                 has_frames = True
             else:
                 frames_missing = True
@@ -75,16 +79,22 @@ def cleanConfig(config):
     if config['animated']:
         if has_frames and frames_missing:
             raise Exception("frame data is incomplete")
-        i = 0
-        for date in sorted(date_dict, key=lambda date: datetime.datetime.strptime(date, "%d/%m/%Y")):
-            group_list = date_dict[date]
-            if not has_frames:
+        # if frames_missing is True and an exception has not been raised then all groups must have dates.
+        # 'frame' data is then assumed to be in chronological order and the config file is updated accordingly.
+        if not has_frames:
+            i = 0
+            for date in sorted(date_dict, key=lambda date: datetime.datetime.strptime(date, "%d/%m/%Y")):
+                group_list = date_dict[date]
+
                 for group in group_list:
                     config['groups'][group]['frame'] = i
                 i += 1
 
+    # if no color is specified for a group then one will be assigned. If there is a group with the same name which
+    # already has a color, this one will be assigned, otherwise one will be chosen using the specified colormap.
+    # Colors must be the same for all groups with the same name. Colors must be distinct on each frame.
     cm =  matplotlib.cm.get_cmap(config['colormap'])
-    palette = [matplotlib.colors.to_rgb(cm(x/len(name_list))) for x in range(len(name_list))]
+    palette = [matplotlib.colors.to_rgb(cm(x/len(name_set))) for x in range(len(name_set))]
     color_set = set()
     color_frame_dict = dict()
     name_color_dict = dict()
@@ -96,6 +106,7 @@ def cleanConfig(config):
         elif content['color'] != 'default':
             if not matplotlib.colors.is_color_like(content['color']):
                 raise Exception("group '{}' does not have a valid color.".format(group))
+            # Colors are normalized to rgb so they can be compared.
             normalized_color = matplotlib.colors.to_rgb(content['color'])
             color_set.add(normalized_color)
             if (normalized_color,content['frame']) in color_frame_dict:
@@ -103,7 +114,6 @@ def cleanConfig(config):
                                 .format(group,color_frame_dict[(normalized_color,content['frame'])]))
             else:
                 color_frame_dict[(normalized_color,content['frame'])] = group
-
             if content['name'] in name_color_dict:
                 if content['color'] != name_color_dict[content['name']]:
                     raise Exception("the group name '{}' is assigned two different colors"
@@ -115,7 +125,6 @@ def cleanConfig(config):
                             .format(content['name'],content['frame']))
         else:
             name_frame_set.add((content['name'],content['frame']))
-
     for group, content in config['groups'].items():
         if content['color'] == 'default':
             if content['name'] in name_color_dict:
@@ -134,18 +143,34 @@ def cleanConfig(config):
 
 
 def orderFrames(config):
+    """
+    Extracts a list of lists of groups, ordered by their frames.
+
+    If a frame in between the start and end has no group with that frame, an empty list will be placed in that position.
+
+    Args:
+        config (dict)
+    Returns:
+        list
+    """
     frame_dict = dict()
     for group, content in config['groups'].items():
         frame_dict.setdefault(content['frame'],[]).append(group)
     ordered_frame_list = sorted(frame_dict)
-    min = ordered_frame_list[0]
-    max = ordered_frame_list[-1]
-    total_frame_list = [frame_dict[frame+min] if frame+min in frame_dict else (frame,[])
-                        for frame in range(max-min+1)]
+    min_ = ordered_frame_list[0]
+    max_ = ordered_frame_list[-1]
+    total_frame_list = [frame_dict[frame+min_] if frame+min_ in frame_dict else (frame,[])
+                        for frame in range(max_-min_+1)]
     return total_frame_list
 
 
 def parseCommands():
+    """
+    Parses commands from the command line.
+
+    Returns:
+    * argparse.ArgumentParser object
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config", type=str,
                         help="config file")
@@ -156,6 +181,16 @@ def parseCommands():
 
 
 def setConfig(args):
+    """
+    Reads config file location from args, extracts json file to dict.
+
+    Args:
+
+    * args ()
+
+    Returns:
+        dict
+    """
     with open(args.config) as json_file:
         config = json.load(json_file)
     cleanConfig(config)
@@ -187,20 +222,22 @@ def main():
             values = config['groups'][group]['data']
             polygon_coords = np.array(list(zip(angles,values)))
 
-            polygon = matplotlib.patches.Polygon(polygon_coords, color=patch_color, alpha=0.4)
+            polygon = matplotlib.patches.Polygon(polygon_coords, color=patch_color, alpha=0.4,
+                                                 label=config['groups'][group]['name'])
             ax.add_patch(polygon)
+        ax.legend(loc='lower right')
         plt.draw()
 
     update_fig(0)
 
     if config['animated']:
-        ani = animation.FuncAnimation(fig, update_fig, len(frame_list), interval=config['frame_length'])
+        ani = animation.FuncAnimation(fig, update_fig, len(frame_list), interval=config['frame_length'], repeat=True)
 
 
     if args.save is None:
         plt.show()
     else:
-        if config['animated']:
+        if not config['animated']:
             plt.savefig(args.save, format='png')
         else:
             ani.save(args.save)
