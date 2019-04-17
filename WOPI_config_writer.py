@@ -32,7 +32,32 @@ def write_heli_data(angles, blades, blade_length=8, fat=True):
     heli_dict['groups'] = groups
     return heli_dict
 
-h_dict = write_heli_data(20,4)
-file = 'helicopter_3.json'
+# h_dict = write_heli_data(20,4)
+# file = 'helicopter_3.json'
+#
+# save_json(h_dict, file)
 
-save_json(h_dict, file)
+def write_cm_fail(angles, blade_length=8, fat=True):
+    base = [1 for x in range(angles)]
+    axes = ['' for x in range(angles)]
+    color_dict = {'title': 'colormap example', 'colormap': 'Accent', 'axes': axes}
+
+    groups = dict()
+    for t in range(angles):
+        data = base.copy()
+        data[t] = blade_length
+        if fat:
+            data[(t+1) % angles] = blade_length
+        content = {'data': data,}
+        g_name = 'color_{}'.format(t)
+        groups[g_name] = content
+    color_dict['groups'] = groups
+    return color_dict
+
+c_dict_1 = write_cm_fail(9)
+c_dict_2 = write_cm_fail(8)
+file_1 = 'failed_cm.json'
+file_2 = 'succeed_cm.json'
+
+save_json(c_dict_1, file_1)
+save_json(c_dict_2, file_2)
