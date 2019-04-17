@@ -1,0 +1,64 @@
+{
+  "title": "test plot",
+  "axes": [
+    "axis 1",
+    "axis 2",
+    "axis 3",
+    "axis 4"
+  ],
+  "animated": true,
+  "groups": {
+    "groupA0": {
+      "name": "Alice",
+      "data": [1,2,3,4],
+      "color": "green",
+      "frame": 0
+    },
+    "groupB0": {
+      "name": "Bob",
+      "data": [2,3,4,3],
+      "color": "default",
+      "frame": 0
+    },
+    "groupC0": {
+      "name": "Charlie",
+      "data": [4,3,1,2],
+      "frame": 0
+    },
+    "groupA1": {
+      "name": "Alice",
+      "data": [5,3,2,5],
+      "color": "default",
+      "frame": 2
+    },
+    "groupB1": {
+      "name": "Bob",
+      "data": [3,4,2,5],
+      "color": "default",
+      "frame": 2
+    },
+    "groupC1": {
+      "name": "Charlie",
+      "data": [6,4,2,2],
+      "frame": 2
+    },
+    "groupA2": {
+      "name": "Alice",
+      "data": [6,7,4,3],
+      "color": "green",
+      "frame": 1
+    },
+    "groupB2": {
+      "name": "Bob",
+      "data": [6,5,1,1],
+      "color": "default",
+      "frame": 1
+    },
+    "groupC2": {
+      "name": "Charlie",
+      "data": [1,2,1,7],
+      "frame": 1
+    }
+  }
+}
+
