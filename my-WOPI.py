@@ -7,6 +7,45 @@ from math import pi
 import numpy as np
 import datetime
 
+
+def parseCommands():
+    """
+    Parses commands from the command line.
+
+    Returns:
+    * argparse.ArgumentParser object
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--config", type=str,
+                        help="config file")
+    parser.add_argument("-s", "--save", type=str,
+                        help="save plot as an image")
+    args = parser.parse_args()
+    return args
+
+
+def setConfig(config_file):
+    """
+    Reads config file location from args, extracts json file to dict.
+
+    Args:
+
+    * args ()
+
+    Returns:
+        dict
+    """
+    with open(config_file) as json_file:
+        config = json.load(json_file)
+    cleanConfig(config)
+    return config
+
+
+def checkType(dict_, key, type_):
+    if type(dict_[key]) is not type_:
+        raise Exception("{0} does not have type {1}. {0} had type {2}".format(key, type_, type(dict_[key])))
+
+
 def cleanConfig(config):
     """
     Cleans the configuration data and raises exceptions where appropriate.
@@ -17,23 +56,23 @@ def cleanConfig(config):
     """
     if 'title' not in config:
         config['title'] = ''
+    checkType(config, 'title', str)
     if 'axes' not in config:
         raise Exception("'axes' does not exist in config file.")
-    else:
-        if type(config['axes']) is not list:
-            raise Exception("'axes' should be a list. 'axes' had type: {}".format(type(config['axes'])))
+    checkType(config, 'axes', list)
+    if len(config['axes']) == 0:
+        raise Exception("'axes' should contain at least one axis.")
     if 'groups' not in config:
         raise Exception("'groups' does not exist in config file.")
-    if type(config['groups']) is not dict:
-        raise Exception("'groups' should be a dict. 'axes' had type: {}".format(type(config['groups'])))
+    checkType(config, 'groups', dict)
     if 'animated' not in config:
         config['animated'] = False
-    if type(config['animated']) is not bool:
-        raise Exception("'animated' should be a bool value. 'animated' had type {}".format(type(config['animated'])))
+    checkType(config, 'animated', bool)
     if 'colormap' not in config:
         config['colormap'] = 'tab20'
     if 'frame_length' not in config:
         config['frame_length'] = 400
+    checkType(config, 'frame_length', int)
 
     date_dict = dict()
     frames_missing = False
@@ -42,7 +81,7 @@ def cleanConfig(config):
     data_set = set()
     for group, content in config['groups'].items():
         if type(content) is not dict:
-            raise Exception("{0} should be a dict. {0} had type: {1}".format(type(content),group))
+            raise Exception("{0} should be a dict. {0} had type: {1}".format(type(content), group))
         if 'name' not in content:
             content['name'] = group
         name_set.add(content['name'])
@@ -54,7 +93,7 @@ def cleanConfig(config):
             raise Exception("the size of data in group '{}' conflicts with the number of axes"
                             .format(group))
         for x in content['data']:
-            if not isinstance(x,(int, float)):
+            if not isinstance(x, (int, float)):
                 raise Exception("data in group'{}' is not numerical".format(group))
             data_set.add(x)
         if config['animated']:
@@ -72,13 +111,15 @@ def cleanConfig(config):
         else:
             content['frame'] = 0
     if 'max' not in config:
-        config['max'] = max(data_set) + 1
+        config['max'] = int(max(data_set) + 1)
     if 'min' not in config:
-        config['min'] = min(data_set) - 1
+        config['min'] = int(min(data_set) - 1)
+        if config['min'] > 0:
+            config['min'] = 0
 
     if config['animated']:
         if has_frames and frames_missing:
-            raise Exception("frame data is incomplete")
+            raise Exception("'frame' data is incomplete")
         # if frames_missing is True and an exception has not been raised then all groups must have dates.
         # 'frame' data is then assumed to be in chronological order and the config file is updated accordingly.
         if not has_frames:
@@ -93,8 +134,8 @@ def cleanConfig(config):
     # if no color is specified for a group then one will be assigned. If there is a group with the same name which
     # already has a color, this one will be assigned, otherwise one will be chosen using the specified colormap.
     # Colors must be the same for all groups with the same name. Colors must be distinct on each frame.
-    cm =  matplotlib.cm.get_cmap(config['colormap'])
-    palette = [matplotlib.colors.to_rgb(cm(x/len(name_set))) for x in range(len(name_set))]
+    cm = matplotlib.cm.get_cmap(config['colormap'])
+    palette = [matplotlib.colors.to_rgb(cm(x / len(name_set))) for x in range(len(name_set))]
     color_set = set()
     color_frame_dict = dict()
     name_color_dict = dict()
@@ -109,22 +150,22 @@ def cleanConfig(config):
             # Colors are normalized to rgb so they can be compared.
             normalized_color = matplotlib.colors.to_rgb(content['color'])
             color_set.add(normalized_color)
-            if (normalized_color,content['frame']) in color_frame_dict:
+            if (normalized_color, content['frame']) in color_frame_dict:
                 raise Exception("group '{}' has shares a conflicting color with group '{}'"
-                                .format(group,color_frame_dict[(normalized_color,content['frame'])]))
+                                .format(group, color_frame_dict[(normalized_color, content['frame'])]))
             else:
-                color_frame_dict[(normalized_color,content['frame'])] = group
+                color_frame_dict[(normalized_color, content['frame'])] = group
             if content['name'] in name_color_dict:
                 if content['color'] != name_color_dict[content['name']]:
                     raise Exception("the group name '{}' is assigned two different colors"
                                     .format(content['name']))
             else:
                 name_color_dict[content['name']] = content['color']
-        if (content['name'],content['frame']) in name_frame_set:
+        if (content['name'], content['frame']) in name_frame_set:
             raise Exception("two groups share the name '{}' and the frame '{}'"
-                            .format(content['name'],content['frame']))
+                            .format(content['name'], content['frame']))
         else:
-            name_frame_set.add((content['name'],content['frame']))
+            name_frame_set.add((content['name'], content['frame']))
     for group, content in config['groups'].items():
         if content['color'] == 'default':
             if content['name'] in name_color_dict:
@@ -155,51 +196,19 @@ def orderFrames(config):
     """
     frame_dict = dict()
     for group, content in config['groups'].items():
-        frame_dict.setdefault(content['frame'],[]).append(group)
+        frame_dict.setdefault(content['frame'], []).append(group)
     ordered_frame_list = sorted(frame_dict)
     min_ = ordered_frame_list[0]
     max_ = ordered_frame_list[-1]
-    total_frame_list = [frame_dict[frame+min_] if frame+min_ in frame_dict else (frame,[])
+    total_frame_list = [frame_dict[frame+min_] if frame+min_ in frame_dict else []
                         for frame in range(max_-min_+1)]
     return total_frame_list
 
 
-def parseCommands():
-    """
-    Parses commands from the command line.
-
-    Returns:
-    * argparse.ArgumentParser object
-    """
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--config", type=str,
-                        help="config file")
-    parser.add_argument("-s", "--save", type=str,
-                        help="save plot as an image")
-    args = parser.parse_args()
-    return args
-
-
-def setConfig(args):
-    """
-    Reads config file location from args, extracts json file to dict.
-
-    Args:
-
-    * args ()
-
-    Returns:
-        dict
-    """
-    with open(args.config) as json_file:
-        config = json.load(json_file)
-    cleanConfig(config)
-    return config
-
-
 def main():
+    """Reads a config file specified in the command line and creates a radar plot from the data."""
     args = parseCommands()
-    config = setConfig(args)
+    config = setConfig(args.config)
     frame_list = orderFrames(config)
 
     number_of_axes = len(config['axes'])
@@ -220,7 +229,7 @@ def main():
         for group in group_list:
             patch_color = config['groups'][group]['color']
             values = config['groups'][group]['data']
-            polygon_coords = np.array(list(zip(angles,values)))
+            polygon_coords = np.array(list(zip(angles, values)))
 
             polygon = matplotlib.patches.Polygon(polygon_coords, color=patch_color, alpha=0.4,
                                                  label=config['groups'][group]['name'])
@@ -232,7 +241,6 @@ def main():
 
     if config['animated']:
         ani = animation.FuncAnimation(fig, update_fig, len(frame_list), interval=config['frame_length'], repeat=True)
-
 
     if args.save is None:
         plt.show()
