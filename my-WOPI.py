@@ -251,4 +251,7 @@ def main():
             ani.save(args.save)
 
 
-main()
+# main()
+
+if __name__ == "__main__":
+    main()
