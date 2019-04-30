@@ -242,13 +242,13 @@ def main():
             patch_color = config['groups'][group]['color']
             values = config['groups'][group]['data']
             polygon_coords = np.array(list(zip(angles, values)))
-
             polygon = matplotlib.patches.Polygon(polygon_coords, color=patch_color, alpha=0.4,
                                                  label=config['groups'][group]['name'])
             ax.add_patch(polygon)
         ax.legend(loc='lower right')
         plt.draw()
 
+    # initialise the first frame of the animation if animated, plot if otherwise
     update_fig(0)
 
     if config['animated']:
