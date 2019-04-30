@@ -13,7 +13,7 @@ def parseCommands():
     Parses commands from the command line.
 
     Returns:
-    * argparse.ArgumentParser object
+        argparse.ArgumentParser object
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config", type=str,
@@ -30,7 +30,7 @@ def setConfig(config_file):
 
     Args:
 
-    * args ()
+    * config_file (string)
 
     Returns:
         dict
@@ -42,6 +42,15 @@ def setConfig(config_file):
 
 
 def checkType(dict_, key, type_):
+    """
+    Raises appropriate exception if the key points to the wrong type of value
+
+    Args:
+
+    * dict_ (dict)
+    * key (string)
+    * type_ (type)
+    """
     if type(dict_[key]) is not type_:
         raise Exception("{0} does not have type {1}. {0} had type {2}".format(key, type_, type(dict_[key])))
 
@@ -74,7 +83,7 @@ def cleanConfig(config):
         config['frame_length'] = 400
     checkType(config, 'frame_length', int)
 
-    date_dict = dict()
+    date_dict = dict()              # keys are dates, values are all groups with that date
     frames_missing = False
     has_frames = False
     name_set = set()
@@ -97,6 +106,7 @@ def cleanConfig(config):
                 raise Exception("data in group'{}' is not numerical".format(group))
             data_set.add(x)
         if config['animated']:
+            # extract enough information to be sure we can assign a frame to each group later
             if not ('date' in content or 'frame' in content):
                 raise Exception("insufficient data in group '{}' to assign a frame"
                                 .format(group))
@@ -110,6 +120,7 @@ def cleanConfig(config):
                 frames_missing = True
         else:
             content['frame'] = 0
+    # pad the range of the plot appropriately
     if 'max' not in config:
         config['max'] = int(max(data_set) + 1)
     if 'min' not in config:
@@ -137,11 +148,10 @@ def cleanConfig(config):
     cm = matplotlib.cm.get_cmap(config['colormap'])
     palette = [matplotlib.colors.to_rgb(cm(x / len(name_set))) for x in range(len(name_set))]
     color_set = set()
-    color_frame_dict = dict()
-    name_color_dict = dict()
-    name_frame_set = set()
+    color_frame_dict = dict()       # keys are tuples of rgb color and frame, values are groups
+    name_color_dict = dict()        # keys are names, values are colors (rgb)
+    name_frame_set = set()          # elements are tuples of name and frame where these belong to the same group
     for group, content in config['groups'].items():
-
         if 'color' not in content:
             content['color'] = 'default'
         elif content['color'] != 'default':
@@ -167,6 +177,8 @@ def cleanConfig(config):
         else:
             name_frame_set.add((content['name'], content['frame']))
     for group, content in config['groups'].items():
+        # colors are assigned to all groups, first checking for colors assigned to groups with the same name,
+        # otherwise choosing a color taken from our colormap
         if content['color'] == 'default':
             if content['name'] in name_color_dict:
                 content['color'] = name_color_dict[content['name']]
@@ -248,6 +260,7 @@ def main():
         if not config['animated']:
             plt.savefig(args.save, format='png')
         else:
+            # animations do not seem to save properly
             ani.save(args.save)
 
 
